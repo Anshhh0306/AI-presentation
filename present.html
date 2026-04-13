@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Planning Problem - AI Presentation</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #2dd4bf;       /* teal-400 */
+            --primary-glow: rgba(45, 212, 191, 0.6);
+            --secondary: #818cf8;     /* indigo-400 */
+            --accent: #fb7185;        /* rose-400 */
+            --bg-dark: #020617;       /* slate-950 */
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            /* Removed background-color here so the negative z-index Star Field can be visible */
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; 
+        }
+
+        h1, h2, h3, h4, .outfit { font-family: 'Outfit', sans-serif; }
+
+        /* Presentation Wrapper */
+        .presentation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .presentation::-webkit-scrollbar { display: none; }
+        .presentation { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Individual Slide */
+        .slide {
+            height: 100vh;
+            width: 100vw;
+            scroll-snap-align: start;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 8vw;
+            box-sizing: border-box;
+            overflow: hidden;
+            perspective: 1200px;
+        }
+
+        /* ------------------------------------------- */
+        /* CUSTOM PER-SLIDE ANIMATIONS (Foreground)    */
+        /* ------------------------------------------- */
+        
+        /* Anim 1: Planning Problem (Pathfinding Nodes) */
+        .anim-planning { width: 35vw; height: 35vh; position: relative; }
+        .node { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary); position: absolute; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); box-shadow: 0 0 20px var(--primary-glow); }
+        .node-a { top: 80%; left: 10%; }
+        .node-b { top: 10%; left: 80%; border-color: var(--accent); color: var(--accent); box-shadow: 0 0 20px rgba(251,113,133,0.6); }
+        .planning-path { position: absolute; height: 2px; background: rgba(255,255,255,0.2); transform-origin: left; }
+        .p1 { top: calc(80% + 20px); left: calc(10% + 20px); width: 40%; transform: rotate(-30deg); }
+        .p2 { top: calc(45% + 20px); left: calc(44% + 20px); width: 45%; transform: rotate(-35deg); }
+        .agent-dot { width: 15px; height: 15px; background: #fff; border-radius: 50%; position: absolute; box-shadow: 0 0 30px #fff; opacity: 0; }
+        .slide.active .agent-dot { animation: agentPath 4s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes agentPath {
+            0% { top: calc(80% + 12px); left: calc(10% + 12px); opacity: 1; }
+            45% { top: calc(45% + 12px); left: calc(44% + 12px); opacity: 1; }
+            90% { top: calc(10% + 12px); left: calc(80% + 12px); opacity: 1; }
+            100% { top: calc(10% + 12px); left: calc(80% + 12px); opacity: 0; }
+        }
+
+        /* Anim 2: Environments (Roomba Classical vs Non-Classical) */
+        .anim-env { width: 40vw; height: 40vh; display: flex; gap: 2rem; }
+        .env-half { flex: 1; border: 2px solid rgba(255,255,255,0.1); border-radius: 1rem; position: relative; overflow: hidden; background: repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.05) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.05) 40px); background-size: 40px 40px; }
+        .non-classical .fog { position: absolute; inset: 0; background: #000; z-index: 5; }
+        .roomba { width: 30px; height: 30px; border-radius: 50%; position: absolute; z-index: 6; }
+        .roomba-c { background: var(--primary); box-shadow: 0 0 20px var(--primary); top: 20px; left: 20px; }
+        .roomba-nc { background: var(--accent); box-shadow: 0 0 20px var(--accent); top: 20px; left: 20px; mix-blend-mode: screen; }
+        .radar-cone { width: 150px; height: 150px; background: radial-gradient(circle closest-side, rgba(251,113,133,0.4), transparent); position: absolute; top: -60px; left: -60px; pointer-events: none; }
+        .slide.active .roomba-c { animation: sweep 6s infinite linear alternate; }
+        .slide.active .roomba-nc { animation: randSweep 4s infinite linear alternate; }
+        @keyframes sweep { 0% { left: 20px; top: 20px; } 30% { left: 80%; top: 20px; } 50% { left: 80%; top: 60px; } 80% { left: 20px; top: 60px; } 100% { left: 20px; top: 100px; } }
+        @keyframes randSweep { 0% { left: 20px; top: 20px; } 25% { left: 50%; top: 60%; } 50% { left: 10%; top: 80%; } 75% { left: 80%; top: 40%; } 100% { left: 60%; top: 10%; } }
+
+        /* Anim 3: Domain Model (Scanning Cube) */
+        .anim-domain { width: 250px; height: 250px; position: relative; transform-style: preserve-3d; transform: rotateX(-20deg) rotateY(30deg); }
+        .cube-face { position: absolute; width: 100%; height: 100%; border: 2px solid var(--primary); box-shadow: inset 0 0 20px rgba(45,212,191,0.2); background: rgba(45,212,191,0.05); }
+        .front  { transform: translateZ(125px); }  .back   { transform: rotateY(180deg) translateZ(125px); }
+        .right  { transform: rotateY(90deg) translateZ(125px); } .left   { transform: rotateY(-90deg) translateZ(125px); }
+        .top    { transform: rotateX(90deg) translateZ(125px); } .bottom { transform: rotateX(-90deg) translateZ(125px); }
+        .scanner { width: 150%; height: 4px; background: var(--secondary); box-shadow: 0 0 20px var(--secondary); position: absolute; left: -25%; transform: translateZ(145px); opacity: 0; }
+        .float-prop { position: absolute; color: var(--secondary); font-family: monospace; font-size: 1.5rem; white-space: nowrap; opacity: 0; }
+        .prop1 { top: -20px; left: 120%; } .prop2 { top: 50%; left: -80%; }
+        .slide.active .anim-domain { animation: spinCube 10s infinite linear; }
+        .slide.active .scanner { animation: scanCube 3s infinite ease-in-out alternate; }
+        .slide.active .prop1 { animation: popText 3s infinite 0.5s; }
+        .slide.active .prop2 { animation: popText 3s infinite 2s; }
+        @keyframes spinCube { 100% { transform: rotateX(-20deg) rotateY(390deg); } }
+        @keyframes scanCube { 0% { top: -10%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 110%; opacity: 0; } }
+        @keyframes popText { 0%, 100% { opacity: 0; transform: translateY(10px); } 10%, 90% { opacity: 1; transform: translateY(0); } }
+
+        /* Anim 4: Agent Loop */
+        .anim-loop { width: 350px; height: 350px; border: 4px dashed rgba(255,255,255,0.1); border-radius: 50%; position: relative; }
+        .loop-dot { width: 28px; height: 28px; background: #fff; box-shadow: 0 0 30px #fff; border-radius: 50%; position: absolute; top: -16px; left: calc(50% - 14px); transform-origin: 50% 191px; } /* adjusted pivot */
+        .loop-label { position: absolute; font-size: 1.25rem; font-weight: 800; letter-spacing: 2px; color: rgba(255,255,255,0.2); transition: 0.3s; text-shadow: none; }
+        .l-plan { top: -45px; left: 50%; transform: translateX(-50%); }
+        .l-exec { bottom: -45px; left: -45px; }
+        .l-eval { bottom: -45px; right: -45px; }
+        .slide.active .loop-dot { animation: orbitLoop 4s infinite linear; }
+        .slide.active .l-plan { animation: flashText 4s infinite 0s; }
+        .slide.active .l-exec { animation: flashText 4s infinite 1.3s; }
+        .slide.active .l-eval { animation: flashText 4s infinite 2.6s; }
+        @keyframes orbitLoop { 100% { transform: rotate(360deg); } }
+        @keyframes flashText { 0%, 100% { color: rgba(255,255,255,0.2); text-shadow: none; } 10%, 20% { color: var(--primary); text-shadow: 0 0 30px var(--primary); } }
+
+        /* Anim 5: Block World */
+        .anim-blocks { width: 250px; height: 350px; position: relative; display: flex; align-items: flex-end; justify-content: center; border-bottom: 4px solid rgba(255,255,255,0.2); }
+        .auto-block { width: 70px; height: 70px; border: 2px solid; position: absolute; bottom: 0; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 800; background: rgba(0,0,0,0.8); }
+        .blk-a { color: var(--primary); border-color: var(--primary); box-shadow: 0 0 20px var(--primary-glow); }
+        .blk-b { color: var(--secondary); border-color: var(--secondary); box-shadow: 0 0 20px rgba(129,140,248,0.5); }
+        .blk-c { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 20px rgba(251,113,133,0.5); }
+        .slide.active .blk-a { animation: stackA 6s infinite; }
+        .slide.active .blk-b { animation: stackB 6s infinite; }
+        .slide.active .blk-c { animation: stackC 6s infinite; }
+        @keyframes stackA { 0%, 100% { transform: translate(-85px, 0); } 30%, 80% { transform: translate(0, 0); } }
+        @keyframes stackB { 0%, 100% { transform: translate(0, 0); } 30%, 80% { transform: translate(0, -74px); } }
+        @keyframes stackC { 0%, 100% { transform: translate(85px, 0); } 30%, 80% { transform: translate(0, -148px); } }
+
+        /* Anim 6: Means-Ends Analysis */
+        .anim-mea { display: flex; align-items: center; gap: 5rem; }
+        .shape { width: 120px; height: 120px; border: 4px solid; position: relative; }
+        .s-start { border-color: rgba(255,255,255,0.2); transform: skew(20deg); }
+        .s-end { border-color: var(--primary); }
+        .diff-ruler { position: absolute; height: 4px; background: var(--accent); box-shadow: 0 0 15px var(--accent); width: 0; top: 50%; left: 100%; transform: translateY(-50%); }
+        .diff-text { position: absolute; top: -35px; left: 50%; color: var(--accent); font-weight: bold; font-size: 1.25rem; font-family: monospace; opacity: 0; }
+        .slide.active .s-start { animation: fixShape 4s infinite alternate ease-in-out; }
+        .slide.active .diff-ruler { animation: measureGap 4s infinite alternate ease-in-out; }
+        .slide.active .diff-text { animation: pulseText 4s infinite alternate ease-in-out; }
+        @keyframes fixShape { 0% { transform: skew(30deg) scale(0.8); border-color: rgba(255,255,255,0.2); } 100% { transform: skew(0) scale(1); border-color: var(--primary); box-shadow: 0 0 40px var(--primary-glow); } }
+        @keyframes measureGap { 0% { width: 5rem; opacity: 1; } 100% { width: 0; opacity: 0; } }
+        @keyframes pulseText { 0%, 10% { opacity: 1; } 90%, 100% { opacity: 0; } }
+
+        /* Anim 7: MEA Steps (Error Reduction) */
+        .anim-error { width: 450px; height: 50px; background: rgba(251,113,133,0.1); border: 1px solid rgba(251,113,133,0.3); border-radius: 25px; position: relative; overflow: hidden; }
+        .error-fill { height: 100%; background: var(--accent); width: 100%; box-shadow: 0 0 25px var(--accent); }
+        .error-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: monospace; font-size: 1.75rem; font-weight: 800; mix-blend-mode: difference; color: #fff; }
+        .pulse-op { position: absolute; width: 50px; height: 50px; border-radius: 50%; border: 4px solid var(--primary); top: -75px; left: 50%; transform: translateX(-50%); opacity: 0; }
+        .slide.active .error-fill { animation: reduceError 5s infinite steps(3); }
+        .slide.active .pulse-op { animation: dropOp 5s infinite; }
+        @keyframes reduceError { 0% { width: 100%; background: var(--accent); } 100% { width: 0%; background: var(--primary); } }
+        @keyframes dropOp { 0%, 100% { opacity: 0; transform: translate(-50%, -20px) scale(0.5); } 10% { opacity: 1; transform: translate(-50%, 50px) scale(1.5); } 30% { opacity: 0; transform: translate(-50%, 75px) scale(2); } }
+
+        /* Anim 8: Non-Linear (Collision Shield) */
+        .anim-nonlinear { width: 350px; height: 350px; position: relative; }
+        .rail-x { width: 100%; height: 2px; background: rgba(255,255,255,0.1); position: absolute; top: 50%; }
+        .rail-y { height: 100%; width: 2px; background: rgba(255,255,255,0.1); position: absolute; left: 50%; }
+        .train-a { width: 24px; height: 24px; background: var(--primary); box-shadow: 0 0 25px var(--primary); border-radius: 50%; position: absolute; top: calc(50% - 12px); left: 0; }
+        .train-b { width: 24px; height: 24px; background: var(--secondary); box-shadow: 0 0 25px var(--secondary); border-radius: 50%; position: absolute; left: calc(50% - 12px); top: 0; }
+        .shield { width: 70px; height: 70px; border: 4px dashed var(--accent); border-radius: 50%; position: absolute; top: calc(50% - 35px); left: calc(50% - 35px); opacity: 0; }
+        .slide.active .train-a { animation: moveA 4s infinite linear; }
+        .slide.active .train-b { animation: moveB 4s infinite linear; }
+        .slide.active .shield { animation: flashShield 4s infinite; }
+        @keyframes moveA { 0% { left: 0; } 40% { left: calc(50% - 50px); } 60% { left: calc(50% - 50px); } /* Wait */ 100% { left: 100%; } }
+        @keyframes moveB { 0% { top: 0; } 100% { top: 100%; } }
+        @keyframes flashShield { 0%, 35%, 65%, 100% { opacity: 0; transform: scale(0.8); } 40%, 60% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 40px rgba(251,113,133,0.5); } }
+
+        /* Anim 9: Reactive Planning (Obstacle Swerve) */
+        .anim-reactive { width: 550px; height: 120px; position: relative; border-bottom: 2px solid rgba(255,255,255,0.1); }
+        .r-agent { width: 24px; height: 24px; background: #fff; box-shadow: 0 0 30px #fff; border-radius: 50%; position: absolute; bottom: 0; left: 0; }
+        .r-obs { width: 45px; height: 45px; background: var(--accent); box-shadow: 0 0 25px var(--accent); position: absolute; bottom: 0; left: 275px; opacity: 0; }
+        .r-label { position: absolute; bottom: 70px; left: 240px; color: var(--primary); font-size: 1.25rem; font-family: monospace; font-weight: bold; opacity: 0; }
+        .slide.active .r-agent { animation: swerveRun 4s infinite linear; }
+        .slide.active .r-obs { animation: popObs 4s infinite; }
+        .slide.active .r-label { animation: popRule 4s infinite; }
+        @keyframes swerveRun { 0% { left: 0; bottom: 0; } 45% { left: 230px; bottom: 0; } 50% { left: 275px; bottom: 70px; } /* Swerve up */ 55% { left: 320px; bottom: 0; } 100% { left: 550px; bottom: 0; } }
+        @keyframes popObs { 0%, 30% { opacity: 0; transform: translateY(-50px); } 35%, 80% { opacity: 1; transform: translateY(0); } 85%, 100% { opacity: 0; } }
+        @keyframes popRule { 0%, 45% { opacity: 0; } 50%, 60% { opacity: 1; text-shadow: 0 0 15px var(--primary); } 65%, 100% { opacity: 0; } }
+
+        /* Glowing Star Field Background */
+        #star-field {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -5;
+            background-color: var(--bg-dark); /* Solid slate background layer */
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .star {
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+            opacity: 0; 
+            animation: twinkle 3s infinite ease-in-out;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 1; transform: scale(1.5); box-shadow: 0 0 15px #fff; }
+        }
+
+        /* Black Hole Implosion Ending */
+        .imploding {
+            animation: suckIntoBlackHole 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards !important;
+            transform-origin: center center;
+            pointer-events: none;
+        }
+
+        @keyframes suckIntoBlackHole {
+            0% { transform: scale(1) rotate(0deg); filter: blur(0px) brightness(1); opacity: 1; }
+            40% { transform: scale(0.6) rotate(45deg); filter: blur(10px) brightness(2); border-radius: 20%; opacity: 0.8; }
+            100% { transform: scale(0) rotate(540deg); filter: blur(30px) brightness(0); border-radius: 50%; opacity: 0; }
+        }
+
+        /* Outro Details */
+        #outro-splash {
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+
+        /* Slide Overlay dims the deep space background */
+        .slide-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: -3; /* Sits BEHIND the animations */
+            background: linear-gradient(90deg, rgba(2,6,23,0.95) 0%, rgba(2,6,23,0.4) 50%, rgba(2,6,23,0.95) 100%);
+        }
+
+        /* Content Areas */
+        .content-area {
+            flex: 1;
+            max-width: 45vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            z-index: 5;
+        }
+
+        /* Active Foreground Box for bespoke animations replacing the Teleprompter! */
+        .anim-wrapper {
+            flex: 1;
+            max-width: 45vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            opacity: 0;
+            transform: scale(0.9) translateX(5vw); /* Drift in from right slightly */
+            transition: opacity 1.2s ease, transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .slide.active .anim-wrapper {
+            opacity: 1; 
+            transform: scale(1) translateX(0);
+        }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+            width: max-content;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .tag-speaker-1 { background: rgba(45, 212, 191, 0.1); color: var(--primary); border: 1px solid rgba(45, 212, 191, 0.3); text-shadow: 0 0 10px var(--primary-glow); }
+        .tag-speaker-2 { background: rgba(129, 140, 248, 0.1); color: var(--secondary); border: 1px solid rgba(129, 140, 248, 0.3); text-shadow: 0 0 10px rgba(129, 140, 248, 0.6); }
+        .tag-speaker-3 { background: rgba(251, 113, 133, 0.1); color: var(--accent); border: 1px solid rgba(251, 113, 133, 0.3); text-shadow: 0 0 10px rgba(251, 113, 133, 0.6); }
+
+        /* Typography Styles */
+        .title-huge {
+            font-size: 5vw;
+            line-height: 1.1;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
+        }
+        .text-glow { text-shadow: 0 0 40px rgba(255,255,255,0.3); }
+
+        .subtitle {
+            font-size: 1.75rem;
+            line-height: 1.5;
+            color: #cbd5e1;
+            font-weight: 300;
+        }
+
+        .glass-box {
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 4px solid var(--primary);
+            padding: 1.5rem 2rem;
+            border-radius: 0 1rem 1rem 0;
+            margin-top: 2rem;
+            backdrop-filter: blur(10px);
+            font-size: 1.25rem;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        /* -------- ANIMATIONS -------- */
+        .anim-boom { transform: scale(0.6) translateZ(-400px); opacity: 0; transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .slide.active .anim-boom { transform: scale(1) translateZ(0); opacity: 1; transition-delay: 0.1s; }
+
+        .anim-drop { transform: translateY(-30vh); opacity: 0; transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .slide.active .anim-drop { transform: translateY(0); opacity: 1; transition-delay: 0.2s; }
+
+        .anim-rise { transform: translateY(30vh); opacity: 0; transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .slide.active .anim-rise { transform: translateY(0); opacity: 1; transition-delay: 0.2s; }
+
+        .anim-left { transform: translateX(-15vw); opacity: 0; transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .slide.active .anim-left { transform: translateX(0); opacity: 1; transition-delay: 0.1s; }
+
+        .anim-right { transform: translateX(15vw); opacity: 0; transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .slide.active .anim-right { transform: translateX(0); opacity: 1; transition-delay: 0.3s; }
+        
+        .delay-1 { transition-delay: 0.4s !important; }
+        .delay-2 { transition-delay: 0.6s !important; }
+
+        .scroll-down {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: rgba(255,255,255,0.4);
+            font-size: 0.75rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            animation: pulse-op 2s infinite;
+            pointer-events: none;
+        }
+        .scroll-down span { font-size: 1.5rem; margin-top: 0.5rem; }
+        @keyframes pulse-op { 0%, 100% { opacity: 0.2; transform: translateX(-50%) translateY(0); } 50% { opacity: 0.8; transform: translateX(-50%) translateY(10px); } }
+
+        /* --- Intro Splash Screen --- */
+        #intro-splash {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(12px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+
+        #intro-splash.hide {
+            opacity: 0;
+            transform: scale(1.1);
+            pointer-events: none;
+        }
+
+        .intro-title-splash {
+            font-size: 7vw;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 0 50px rgba(45, 212, 191, 0.6);
+            opacity: 0;
+            font-family: 'Outfit', sans-serif;
+            animation: splash-slap-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.4) forwards;
+            animation-delay: 0.1s;
+        }
+
+        .intro-by-splash {
+            font-size: 1.5vw;
+            color: var(--primary);
+            margin: 1.5rem 0;
+            opacity: 0;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.6em;
+            text-transform: uppercase;
+            animation: splash-fade-drop 0.4s ease-out forwards;
+            animation-delay: 0.5s;
+        }
+
+        .intro-names-splash {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            font-size: 3.5vw;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .name-slap-splash {
+            opacity: 0;
+            display: inline-block;
+            animation: name-slap-anim 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.5) forwards;
+            text-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        .name-slap-splash:nth-child(1) { animation-delay: 0.8s; color: var(--primary); }
+        .name-slap-splash:nth-child(2) { animation-delay: 1.0s; color: var(--secondary); }
+        .name-slap-splash:nth-child(3) { animation-delay: 1.2s; color: var(--accent); }
+
+        @keyframes splash-slap-in {
+            0% { transform: scale(3); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes name-slap-anim {
+            0% { transform: scale(2.5) rotate(-5deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+
+        @keyframes splash-fade-drop {
+            0% { transform: translateY(-30px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Transition elements removed -->
+
+    <!-- Glowing Stars Background -->
+    <div id="star-field"></div>
+
+    <div class="scroll-down outfit" id="scroll-prompt">
+        Scroll
+        <span>↓</span>
+    </div>
+
+    <div class="presentation" id="scroller">
+
+        <!-- SLIDE 1 -->
+        <section class="slide" id="slide-0">
+            <div class="slide-overlay"></div>
+            
+            <div class="content-area anim-boom">
+                <div class="tag tag-speaker-1">Speaker 1</div>
+                <h1 class="title-huge text-glow">The Planning Problem</h1>
+                <p class="subtitle">Transitioning from a <strong>Current State</strong> to a <strong>Goal State</strong>.</p>
+                <div class="glass-box delay-1 anim-left">Goal: Generate a sequence of actions.</div>
+            </div>
+
+            <!-- Foreground Animation Replacing Teleprompter -->
+            <div class="anim-wrapper">
+                <div class="anim-planning">
+                    <div class="planning-path p1"></div>
+                    <div class="planning-path p2"></div>
+                    <div class="node node-a">A</div>
+                    <div class="node node-b">B</div>
+                    <div class="agent-dot"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 2 -->
+        <section class="slide" id="slide-1">
+            <div class="slide-overlay"></div>
+
+            <div class="content-area anim-drop">
+                <div class="tag tag-speaker-1">Speaker 1</div>
+                <h1 class="title-huge text-glow">The Environments</h1>
+                <ul class="subtitle space-y-6 mt-6">
+                    <li class="flex items-center gap-4"><span class="text-3xl">🌎</span> <strong>Classical:</strong> Fully observable, deterministic, static.</li>
+                    <li class="flex items-center gap-4"><span class="text-3xl">🪐</span> <strong>Non-Classical:</strong> Partially observable, stochastic.</li>
+                </ul>
+            </div>
+            
+            <div class="anim-wrapper delay-1">
+                <div class="anim-env">
+                    <div class="env-half classical">
+                        <div class="roomba roomba-c"></div>
+                    </div>
+                    <div class="env-half non-classical">
+                        <div class="fog"></div>
+                        <div class="roomba roomba-nc">
+                            <div class="radar-cone"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 3 -->
+        <section class="slide" id="slide-2">
+            <div class="slide-overlay"></div>
+
+            <div class="content-area anim-left">
+                <div class="tag tag-speaker-1">Speaker 1</div>
+                <h1 class="title-huge text-glow">The Domain Model</h1>
+                <div class="grid grid-cols-1 gap-4 mt-6 w-3/4">
+                    <div class="glass-box !mt-0 !border-teal-400">1. Define Actions & Objects</div>
+                    <div class="glass-box !mt-0 !border-teal-500 delay-1 anim-left">2. Define Operators</div>
+                    <div class="glass-box !mt-0 !border-teal-600 delay-2 anim-left">3. Set State Constraints</div>
+                </div>
+            </div>
+
+            <div class="anim-wrapper delay-1">
+                <div class="anim-domain">
+                    <div class="cube-face front"></div>
+                    <div class="cube-face back"></div>
+                    <div class="cube-face right"></div>
+                    <div class="cube-face left"></div>
+                    <div class="cube-face top"></div>
+                    <div class="cube-face bottom"></div>
+                    <div class="scanner"></div>
+                    <div class="float-prop prop1">[Action: Move]</div>
+                    <div class="float-prop prop2">[Constraint: None]</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 4 -->
+        <section class="slide" id="slide-3">
+            <div class="slide-overlay"></div>
+
+            <div class="content-area anim-rise">
+                <div class="tag tag-speaker-2">Speaker 2</div>
+                <h1 class="title-huge text-glow">The Agent Loop</h1>
+                <div class="flex flex-col space-y-6 mt-8 font-outfit text-2xl font-light text-indigo-200">
+                    <div class="flex items-center gap-4 anim-left"><div class="w-12 h-[1px] bg-indigo-500"></div> Generate Goal</div>
+                    <div class="flex items-center gap-4 anim-left delay-1"><div class="w-12 h-[1px] bg-indigo-500"></div> Construct Plan</div>
+                    <div class="flex items-center gap-4 anim-left delay-2"><div class="w-12 h-[1px] bg-indigo-500"></div> Execute Plan</div>
+                    <div class="flex items-center gap-4 anim-left delay-2"><div class="w-12 h-[1px] bg-indigo-500"></div> Begin Again</div>
+                </div>
+            </div>
+
+            <div class="anim-wrapper delay-1">
+                <div class="anim-loop">
+                    <div class="loop-dot"></div>
+                    <div class="loop-label l-plan">PLAN</div>
+                    <div class="loop-label l-exec">EXECUTE</div>
+                    <div class="loop-label l-eval">GOAL</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 5 -->
+        <section class="slide" id="slide-4">
+            <div class="slide-overlay"></div>
+
+            <div class="content-area anim-boom">
+                <div class="tag tag-speaker-2">Speaker 2</div>
+                <h1 class="title-huge text-glow">The Block World</h1>
+                <p class="subtitle mt-6">Goal: Arrange <strong class="text-indigo-400">'N' blocks</strong> into a desired sequence using limited moves.</p>
+            </div>
+
+            <div class="anim-wrapper delay-1">
+                <div class="anim-blocks">
+                    <div class="auto-block blk-a">A</div>
+                    <div class="auto-block blk-b">B</div>
+                    <div class="auto-block blk-c">C</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 6 -->
+        <section class="slide" id="slide-5">
+            <div class="slide-overlay"></div>
+
+            <div class="content-area anim-right">
+                <div class="tag tag-speaker-2">Speaker 2</div>
+                <h1 class="title-huge text-glow">Means-Ends Analysis</h1>
+                <p class="subtitle mt-6">A mix of Forward and Backward search. Focuses on the <strong class="text-indigo-400">difference</strong> between states.</p>
+                <div class="glass-box !border-indigo-400 delay-1 anim-rise">Bridging the algorithmic gap</div>
+            </div>
+
+            <div class="anim-wrapper delay-2">
+                <div class="anim-mea">
+                    <div class="shape s-start"></div>
+                    <div class="shape s-end">
+                        <div class="diff-ruler">
+                            <div class="diff-text">DIFF</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 7 -->
+        <section class="slide" id="slide-6">
+            <div class="slide-overlay"></div>
+
+            <div class="content-area anim-drop">
+                <div class="tag tag-speaker-3">Speaker 3</div>
+                <h1 class="title-huge text-glow">MEA Steps</h1>
+                <div class="flex flex-col space-y-6 mt-8 w-4/5">
+                    <div class="glass-box !mt-0 !border-rose-400 anim-left text-slate-200"><strong class="text-rose-400 mr-4">01.</strong> Evaluate Difference</div>
+                    <div class="glass-box !mt-0 !border-rose-500 anim-left delay-1 text-slate-200"><strong class="text-rose-500 mr-4">02.</strong> Select Applicable Operators</div>
+                    <div class="glass-box !mt-0 !border-rose-600 anim-left delay-2 text-slate-200"><strong class="text-rose-600 mr-4">03.</strong> Apply & Reduce</div>
+                </div>
+            </div>
+
+            <div class="anim-wrapper delay-1">
+                <div class="anim-error">
+                    <div class="error-fill"></div>
+                    <div class="error-label">ERROR</div>
+                    <div class="pulse-op"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 8 -->
+        <section class="slide" id="slide-7">
+            <div class="slide-overlay"></div>
+
+            <div class="content-area anim-rise">
+                <div class="tag tag-speaker-3">Speaker 3</div>
+                <h1 class="title-huge text-glow">Non-Linear Planning</h1>
+                <p class="subtitle mt-6">Solving sub-problems simultaneously requires <strong class="text-rose-400">Constraint Posting</strong> to avoid conflicts.</p>
+            </div>
+
+            <div class="anim-wrapper delay-1">
+                <div class="anim-nonlinear">
+                    <div class="rail-x"></div>
+                    <div class="rail-y"></div>
+                    <div class="train-a"></div>
+                    <div class="train-b"></div>
+                    <div class="shield"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 9 -->
+        <section class="slide" id="slide-8">
+            <div class="slide-overlay"></div>
+
+            <div class="content-area anim-boom">
+                <div class="tag tag-speaker-3">Speaker 3</div>
+                <h1 class="title-huge text-glow">Reactive Planning</h1>
+                <p class="subtitle mt-6">Planning under uncertainty using dynamic <strong class="text-rose-400">If-Then Rules</strong>.</p>
+            </div>
+
+            <div class="anim-wrapper delay-1">
+                <div class="anim-reactive">
+                    <div class="r-agent"></div>
+                    <div class="r-obs"></div>
+                    <div class="r-label">THEN SWERVE</div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // --------------------------------------------------------
+        // Glowing Background Stars Generation
+        // --------------------------------------------------------
+        document.addEventListener('DOMContentLoaded', () => {
+            const starField = document.getElementById('star-field');
+            if (starField) {
+                // Generate 400 random twinkling stars natively
+                for (let i = 0; i < 400; i++) {
+                    const star = document.createElement('div');
+                    star.classList.add('star');
+                    star.style.left = Math.random() * 100 + 'vw';
+                    star.style.top = Math.random() * 100 + 'vh';
+                    
+                    // Randomize size
+                    const size = Math.random() * 2.5 + 0.5;
+                    star.style.width = size + 'px';
+                    star.style.height = size + 'px';
+                    
+                    // Randomize twinkling speed and offset
+                    star.style.animationDuration = (Math.random() * 4 + 2) + 's';
+                    star.style.animationDelay = (Math.random() * 5) + 's';
+                    
+                    // Subtle colors (mostly white, some teal/indigo)
+                    const colorChance = Math.random();
+                    if (colorChance > 0.90) {
+                        star.style.background = '#2dd4bf'; // Teal
+                        star.style.boxShadow = '0 0 10px #2dd4bf';
+                    } else if (colorChance > 0.80) {
+                        star.style.background = '#818cf8'; // Indigo
+                        star.style.boxShadow = '0 0 10px #818cf8';
+                    }
+                    
+                    starField.appendChild(star);
+                }
+
+                // --------------------------------------------------------
+                // Final Black Hole Implosion Event
+                // --------------------------------------------------------
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const scroller = document.getElementById('scroller');
+                        const stars = document.getElementById('star-field');
+                        const prompt = document.getElementById('scroll-prompt');
+                        
+                        // Implode both the scroller and stars
+                        if(scroller) scroller.classList.add('imploding');
+                        if(stars) stars.classList.add('imploding');
+                        if(prompt) prompt.style.display = 'none';
+
+                        // Transition perfectly aligned with the 2-second swallow animation
+                        setTimeout(() => {
+                            if(scroller) scroller.style.display = 'none';
+                            if(stars) stars.style.display = 'none';
+                            document.body.style.backgroundColor = '#000';
+
+                            // Clean, sleek Outro Build
+                            const outro = document.createElement('div');
+                            outro.id = 'outro-splash';
+                            outro.innerHTML = `
+                                <div class="intro-by-splash" style="opacity: 1; margin: 0 0 2rem 0; text-shadow: 0 0 20px rgba(45, 212, 191, 0.5);">BY</div>
+                                <div class="intro-names-splash" style="margin-top: 1rem;">
+                                    <span class="name-slap-splash" style="animation-delay: 0.5s; color: var(--primary);">Anshumaan Das</span>
+                                    <span class="name-slap-splash" style="animation-delay: 0.7s; color: var(--secondary);">Debjit Das</span>
+                                    <span class="name-slap-splash" style="animation-delay: 0.9s; color: var(--accent);">Mridul Kaushik</span>
+                                </div>
+                            `;
+                            document.body.appendChild(outro);
+
+                        }, 2000); // Exact 2.0s timing
+                    }
+                });
+            }
+
+            // Activate slide keyframes smoothly
+            const slides = document.querySelectorAll('.slide');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('active');
+                    } else {
+                        // Reset classes when looking away so animations re-trigger flawlessly
+                        entry.target.classList.remove('active');
+                    }
+                });
+            }, {
+                threshold: 0.5 
+            });
+
+            slides.forEach(slide => observer.observe(slide));
+        });
+
+    </script>
+</body>
+</html>
