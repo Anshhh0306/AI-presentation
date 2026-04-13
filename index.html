@@ -66,20 +66,21 @@
         /* ------------------------------------------- */
         
         /* Anim 1: Planning Problem (Pathfinding Nodes) */
-        .anim-planning { width: 35vw; height: 35vh; position: relative; }
-        .node { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary); position: absolute; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); box-shadow: 0 0 20px var(--primary-glow); }
-        .node-a { top: 80%; left: 10%; }
-        .node-b { top: 10%; left: 80%; border-color: var(--accent); color: var(--accent); box-shadow: 0 0 20px rgba(251,113,133,0.6); }
-        .planning-path { position: absolute; height: 2px; background: rgba(255,255,255,0.2); transform-origin: left; }
-        .p1 { top: calc(80% + 20px); left: calc(10% + 20px); width: 40%; transform: rotate(-30deg); }
-        .p2 { top: calc(45% + 20px); left: calc(44% + 20px); width: 45%; transform: rotate(-35deg); }
-        .agent-dot { width: 15px; height: 15px; background: #fff; border-radius: 50%; position: absolute; box-shadow: 0 0 30px #fff; opacity: 0; }
+        .anim-planning { width: 350px; height: 350px; position: relative; }
+        .node { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary); position: absolute; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); box-shadow: 0 0 20px var(--primary-glow); z-index: 5;}
+        .node-a { top: 280px; left: 30px; } /* Center axis: (50, 300) */
+        .node-b { top: 30px; left: 280px; border-color: var(--accent); color: var(--accent); box-shadow: 0 0 20px rgba(251,113,133,0.6); } /* Center axis: (300, 50) */
+        .planning-path { position: absolute; height: 2px; background: rgba(255,255,255,0.2); transform-origin: left center; z-index: 1;}
+        .p1 { top: 300px; left: 50px; width: 180px; transform: rotate(-56.3deg); } /* Perfect physical math tangent */
+        .p2 { top: 150px; left: 150px; width: 180px; transform: rotate(-33.7deg); } /* Connecting node */
+        .agent-dot { width: 15px; height: 15px; background: #fff; border-radius: 50%; position: absolute; box-shadow: 0 0 30px #fff; opacity: 0; z-index: 10; margin-top: -7.5px; margin-left: -7.5px; } /* Clean bounding center via negative margin */
+        
         .slide.active .agent-dot { animation: agentPath 4s infinite cubic-bezier(0.4, 0, 0.2, 1); }
         @keyframes agentPath {
-            0% { top: calc(80% + 12px); left: calc(10% + 12px); opacity: 1; }
-            45% { top: calc(45% + 12px); left: calc(44% + 12px); opacity: 1; }
-            90% { top: calc(10% + 12px); left: calc(80% + 12px); opacity: 1; }
-            100% { top: calc(10% + 12px); left: calc(80% + 12px); opacity: 0; }
+            0% { top: 300px; left: 50px; opacity: 1; }
+            45% { top: 150px; left: 150px; opacity: 1; }
+            90% { top: 50px; left: 300px; opacity: 1; }
+            100% { top: 50px; left: 300px; opacity: 0; }
         }
 
         /* Anim 2: Environments (Roomba Classical vs Non-Classical) */
@@ -207,12 +208,15 @@
             background: #fff;
             border-radius: 50%;
             opacity: 0; 
+            /* Fix GPU paint lag by statically applying standard shadow instead of dynamically frame-shifting it */
+            box-shadow: 0 0 10px rgba(255,255,255,0.8);
             animation: twinkle 3s infinite ease-in-out;
+            will-change: opacity, transform;
         }
         
         @keyframes twinkle {
             0%, 100% { opacity: 0; transform: scale(0.5); }
-            50% { opacity: 1; transform: scale(1.5); box-shadow: 0 0 15px #fff; }
+            50% { opacity: 1; transform: scale(1.5); } /* Box-shadow stripped from pipeline natively */
         }
 
         /* Black Hole Implosion Ending */
@@ -675,8 +679,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             const starField = document.getElementById('star-field');
             if (starField) {
-                // Generate 400 random twinkling stars natively
-                for (let i = 0; i < 400; i++) {
+                // Clamped density back to 100 stars strictly to prevent DOM node processing overhead causing overall CPU stutter
+                for (let i = 0; i < 100; i++) {
                     const star = document.createElement('div');
                     star.classList.add('star');
                     star.style.left = Math.random() * 100 + 'vw';
